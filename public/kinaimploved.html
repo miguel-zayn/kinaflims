@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kina Flims</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark background similar to image */
+            color: #e5e7eb; /* Light text color */
+        }
+        .carousel-item, .slider-item {
+            flex: 0 0 auto;
+            scroll-snap-align: start;
+            position: relative; /* For play button positioning */
+        }
+        .carousel-container, .slider-container {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            scrollbar-width: none; /* Hide scrollbar for Firefox */
+        }
+        .carousel-container::-webkit-scrollbar, .slider-container::-webkit-scrollbar {
+            display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
+        }
+        .arrow {
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out;
+        }
+        .arrow:hover {
+            transform: scale(1.1);
+        }
+        .play-button-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            cursor: pointer;
+        }
+        .carousel-item:hover .play-button-overlay,
+        .slider-item:hover .play-button-overlay {
+            opacity: 1;
+        }
+        .play-button-overlay svg {
+            width: 24px; /* Adjust size as needed */
+            height: 24px;
+            fill: white;
+        }
+        /* Gradient for empty images */
+        .empty-image-gradient {
+            background: linear-gradient(to right, #4f46e5, #ec4899); /* Example gradient */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        /* Custom modal for movie play */
+        .movie-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .movie-modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .movie-modal-content {
+            background-color: #1f2937;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+            max-width: 90%;
+            width: 400px;
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <header class="bg-gray-900 shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="#" id="homeLink" class="text-2xl font-bold text-orange-500 hover:text-orange-400 transition-colors">kns</a>
+
+                <div class="flex-1 max-w-md mx-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <input
+                            id="searchInput"
+                            class="block w-full bg-gray-800 border border-gray-700 rounded-md py-2 pl-10 pr-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+                            type="search"
+                            name="search"
+                            placeholder="search movies"
+                        >
+                    </div>
+                </div>
+
+                <nav class="hidden md:flex space-x-4">
+                    <a href="#" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-orange-400 transition-colors">home</a>
+                    <a href="#" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-orange-400 transition-colors">movies</a>
+                    <a href="#" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-orange-400 transition-colors">series</a>
+                    <a href="#" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-orange-400 transition-colors">logout</a>
+                </nav>
+                <div class="md:hidden">
+                    <button id="mobileMenuButton" class="text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-500">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="mobileMenu" class="md:hidden hidden bg-gray-800">
+            <a href="#" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-700 hover:text-orange-400 transition-colors">HOME</a>
+            <a href="#" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-700 hover:text-orange-400 transition-colors">MOVIES</a>
+            <a href="#" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-700 hover:text-orange-400 transition-colors">SERIES</a>
+            <a href="#" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-700 hover:text-orange-400 transition-colors">LOGOUT</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <section id="featuredMoviesSection" class="mb-12">
+            <h2 class="text-2xl font-semibold mb-4 text-orange-500">Featured Movies</h2>
+            <div class="relative">
+                <div id="featuredCarousel" class="carousel-container space-x-4 rounded-lg">
+                    </div>
+                <button id="featuredPrev" class="arrow absolute top-1/2 left-0 sm:left-2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                </button>
+                <button id="featuredNext" class="arrow absolute top-1/2 right-0 sm:right-2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <section id="movieSlider1Section" class="mb-12">
+            <h2 class="text-xl font-semibold mb-4 text-orange-500">Popular Now</h2>
+            <div class="relative">
+                <div id="movieSlider1" class="slider-container space-x-3 rounded-lg">
+                    </div>
+                 <button id="slider1Prev" class="arrow absolute top-1/2 left-0 sm:left-1 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                </button>
+                <button id="slider1Next" class="arrow absolute top-1/2 right-0 sm:right-1 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full z-10">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <section id="movieSlider2Section" class="mb-12">
+            <h2 class="text-xl font-semibold mb-4 text-orange-500">New Releases</h2>
+            <div class="relative">
+                <div id="movieSlider2" class="slider-container space-x-3 rounded-lg">
+                    </div>
+                 <button id="slider2Prev" class="arrow absolute top-1/2 left-0 sm:left-1 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                </button>
+                <button id="slider2Next" class="arrow absolute top-1/2 right-0 sm:right-1 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full z-10">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <section id="searchResultsSection" class="mb-12 hidden">
+            <h2 class="text-2xl font-semibold mb-4 text-orange-500">Search Results</h2>
+            <div id="searchResultsContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                </div>
+            <p id="noResultsMessage" class="text-center text-gray-400 hidden">No movies found matching your search.</p>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-900 border-t border-gray-700 py-8 text-center">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <p class="mb-2">
+                <a href="mailto:contact@kinaflims.com" class="text-orange-500 hover:text-orange-400 hover:underline transition-colors">Contact Us</a>
+            </p>
+            <p class="text-sm text-gray-500">&copy; <span id="currentYear"></span> Kina Flims. Developed by Patrick.</p>
+        </div>
+    </footer>
+
+    <div id="moviePlayModal" class="movie-modal">
+        <div class="movie-modal-content">
+            <h3 id="modalMovieTitle" class="text-xl font-semibold mb-4"></h3>
+            <p id="modalMovieMessage" class="mb-4">Playing movie...</p>
+            <div class="aspect-w-16 aspect-h-9 mb-4 bg-black rounded-md flex items-center justify-center">
+                <svg class="w-16 h-16 text-orange-500 animate-pulse" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <button id="closeModalButton" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Data ---
+        const allMovies = [
+            // Featured Movies (larger images)
+            { id: 'f1', title: 'Havoc', year: '2025', genre: 'Action', imageUrl: 'https://placehold.co/600x900/1a202c/ffffff?text=HAVOC&font=montserrat', description: 'Tom Hardy stars in this action-packed thriller.', isFeatured: true },
+            { id: 'f2', title: 'G20', year: '2024', genre: 'Thriller', imageUrl: 'https://placehold.co/600x900/2d3748/ffffff?text=G20&font=montserrat', description: 'A high-stakes political thriller.', isFeatured: true },
+            { id: 'f3', title: 'Mystic Waters', year: '2024', genre: 'Fantasy', imageUrl: 'https://placehold.co/600x900/4a5568/ffffff?text=Mystic+Waters&font=montserrat', description: 'A magical adventure beneath the waves.', isFeatured: true },
+            { id: 'f4', title: 'Cyber Runner', year: '2025', genre: 'Sci-Fi', imageUrl: 'https://placehold.co/600x900/718096/ffffff?text=Cyber+Runner&font=montserrat', description: 'In a dystopian future, a hero rises.', isFeatured: true },
+            { id: 'f5', title: 'Lost Kingdom', year: '2024', genre: 'Adventure', imageUrl: 'https://placehold.co/600x900/a0aec0/111827?text=Lost+Kingdom&font=montserrat', description: 'An epic quest to find a forgotten land.', isFeatured: true },
+
+            // Regular Movies (smaller images)
+            { id: 'm1', title: 'The Enforcer', year: '2023', genre: 'Action', imageUrl: 'https://placehold.co/300x450/1a202c/ffffff?text=Enforcer&font=lato', description: 'He stops at nothing to protect his city.' },
+            { id: 'm2', title: 'Night Watch', year: '2024', genre: 'Horror', imageUrl: 'https://placehold.co/300x450/2d3748/ffffff?text=Night+Watch&font=lato', description: 'Terror lurks in the shadows.' },
+            { id: 'm3', title: 'Cosmic Drift', year: '2023', genre: 'Sci-Fi', imageUrl: 'https://placehold.co/300x450/4a5568/ffffff?text=Cosmic+Drift&font=lato', description: 'A journey to the edge of the universe.' },
+            { id: 'm4', title: 'Silent Witness', year: '2024', genre: 'Crime', imageUrl: 'https://placehold.co/300x450/718096/ffffff?text=Silent+Witness&font=lato', description: 'A detective uncovers a deadly secret.' },
+            { id: 'm5', title: 'Island Escape', year: '2023', genre: 'Adventure', imageUrl: 'https://placehold.co/300x450/a0aec0/111827?text=Island+Escape&font=lato', description: 'Survival is only the beginning.' },
+            { id: 'm6', title: 'Robot Uprising', year: '2025', genre: 'Sci-Fi', imageUrl: 'https://placehold.co/300x450/1a202c/ffffff?text=Robot+Uprising&font=lato', description: 'The machines have taken over.' },
+            { id: 'm7', title: 'The Alchemist', year: '2024', genre: 'Fantasy', imageUrl: '', description: 'Magic and mystery intertwine.' }, // Empty image for gradient
+            { id: 'm8', title: 'Deep Dive', year: '2023', genre: 'Documentary', imageUrl: 'https://placehold.co/300x450/4a5568/ffffff?text=Deep+Dive&font=lato', description: 'Exploring the wonders of the ocean.' },
+            { id: 'm9', title: 'Street Racers', year: '2024', genre: 'Action', imageUrl: 'https://placehold.co/300x450/718096/ffffff?text=Street+Racers&font=lato', description: 'High-octane thrills on the city streets.' },
+            { id: 'm10', title: 'Forgotten Lore', year: '2023', genre: 'Mystery', imageUrl: '', description: 'Unraveling ancient secrets.' }, // Empty image for gradient
+        ];
+
+        const featuredMovies = allMovies.filter(movie => movie.isFeatured);
+        const popularMovies = allMovies.filter(movie => !movie.isFeatured).slice(0, 10); // First 10 non-featured for slider 1
+        const newReleases = allMovies.filter(movie => !movie.isFeatured).slice(5, 15); // Next 10 non-featured for slider 2 (can overlap or be different)
+
+
+        // --- DOM Elements ---
+        const featuredCarousel = document.getElementById('featuredCarousel');
+        const movieSlider1 = document.getElementById('movieSlider1');
+        const movieSlider2 = document.getElementById('movieSlider2');
+        const searchInput = document.getElementById('searchInput');
+        const searchResultsContainer = document.getElementById('searchResultsContainer');
+        const noResultsMessage = document.getElementById('noResultsMessage');
+        const sectionsToHideOnSearch = [
+            document.getElementById('featuredMoviesSection'),
+            document.getElementById('movieSlider1Section'),
+            document.getElementById('movieSlider2Section')
+        ];
+        const searchResultsSection = document.getElementById('searchResultsSection');
+        const currentYearSpan = document.getElementById('currentYear');
+        const mobileMenuButton = document.getElementById('mobileMenuButton');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const homeLink = document.getElementById('homeLink');
+
+        // Movie Modal Elements
+        const moviePlayModal = document.getElementById('moviePlayModal');
+        const modalMovieTitle = document.getElementById('modalMovieTitle');
+        const modalMovieMessage = document.getElementById('modalMovieMessage');
+        const closeModalButton = document.getElementById('closeModalButton');
+
+        // --- Functions ---
+
+        // Function to create a movie item HTML
+        function createMovieItem(movie, isFeaturedItem = false) {
+            const itemClass = isFeaturedItem ? 'carousel-item w-2/3 sm:w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5' : 'slider-item w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/6 xl:w-1/8';
+            const imageClass = isFeaturedItem ? 'h-96' : 'h-64'; // Taller for featured
+            const imageWidth = isFeaturedItem ? 'w-full' : 'w-full';
+
+            const item = document.createElement('div');
+            item.className = `${itemClass} rounded-lg overflow-hidden shadow-lg bg-gray-800 transform hover:scale-105 transition-transform duration-300`;
+            item.dataset.movieId = movie.id;
+
+            let imageElement;
+            if (movie.imageUrl) {
+                imageElement = `<img src="${movie.imageUrl}" alt="${movie.title}" class="${imageWidth} ${imageClass} object-cover rounded-t-lg">`;
+            } else {
+                // Gradient for empty image
+                imageElement = `<div class="${imageWidth} ${imageClass} empty-image-gradient rounded-t-lg flex items-center justify-center text-center p-2"><span>${movie.title}</span></div>`;
+            }
+
+            item.innerHTML = `
+                ${imageElement}
+                <div class="p-3">
+                    <h3 class="text-sm font-semibold truncate" title="${movie.title}">${movie.title}</h3>
+                    <p class="text-xs text-gray-400">${movie.year} &bull; ${movie.genre}</p>
+                </div>
+                <div class="play-button-overlay">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8">
+                        <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+            `;
+            // Add click listener for playing movie
+            item.addEventListener('click', () => playMovie(movie));
+            return item;
+        }
+
+        // Function to populate a slider/carousel
+        function populateSlider(container, movies, isFeatured = false) {
+            container.innerHTML = ''; // Clear existing items
+            movies.forEach(movie => {
+                container.appendChild(createMovieItem(movie, isFeatured));
+            });
+        }
+
+        // Function to handle slider navigation
+        function setupSliderNavigation(prevButtonId, nextButtonId, sliderElement) {
+            const prevButton = document.getElementById(prevButtonId);
+            const nextButton = document.getElementById(nextButtonId);
+            const scrollAmount = sliderElement.clientWidth * 0.75; // Scroll 75% of visible width
+
+            prevButton.addEventListener('click', () => {
+                sliderElement.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            });
+            nextButton.addEventListener('click', () => {
+                sliderElement.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            });
+        }
+
+        // Function to simulate playing a movie
+        function playMovie(movie) {
+            console.log('Playing movie:', movie.title);
+            modalMovieTitle.textContent = movie.title;
+            modalMovieMessage.textContent = `Enjoy watching "${movie.title}"! This is a simulation.`;
+            moviePlayModal.classList.add('active');
+        }
+
+        // Function to close the movie modal
+        closeModalButton.addEventListener('click', () => {
+            moviePlayModal.classList.remove('active');
+        });
+        // Close modal if clicked outside content
+        moviePlayModal.addEventListener('click', (event) => {
+            if (event.target === moviePlayModal) {
+                moviePlayModal.classList.remove('active');
+            }
+        });
+
+
+        // Search functionality
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+
+            if (searchTerm.length > 0) {
+                // Hide main sections, show search results section
+                sectionsToHideOnSearch.forEach(section => section.classList.add('hidden'));
+                searchResultsSection.classList.remove('hidden');
+
+                const filteredMovies = allMovies.filter(movie =>
+                    movie.title.toLowerCase().includes(searchTerm) ||
+                    movie.genre.toLowerCase().includes(searchTerm) ||
+                    String(movie.year).includes(searchTerm)
+                );
+
+                searchResultsContainer.innerHTML = ''; // Clear previous results
+                if (filteredMovies.length > 0) {
+                    filteredMovies.forEach(movie => {
+                        // Use smaller item style for search results
+                        const movieItem = createMovieItem(movie, false);
+                        // Adjust classes for grid layout if needed
+                        movieItem.classList.remove('w-1/3', 'sm:w-1/4', 'md:w-1/5', 'lg:w-1/6', 'xl:w-1/8');
+                        movieItem.classList.add('w-full'); // Let grid handle sizing
+                        searchResultsContainer.appendChild(movieItem);
+                    });
+                    noResultsMessage.classList.add('hidden');
+                } else {
+                    noResultsMessage.classList.remove('hidden');
+                }
+            } else {
+                // Show main sections, hide search results section
+                sectionsToHideOnSearch.forEach(section => section.classList.remove('hidden'));
+                searchResultsSection.classList.add('hidden');
+                noResultsMessage.classList.add('hidden');
+            }
+        });
+
+        // Mobile menu toggle
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Home link functionality (scroll to top and clear search)
+        homeLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            searchInput.value = ''; // Clear search input
+            // Trigger input event to reset view
+            searchInput.dispatchEvent(new Event('input'));
+        });
+
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentYearSpan) {
+                currentYearSpan.textContent = new Date().getFullYear();
+            }
+
+            // Populate carousels and sliders
+            if (featuredCarousel) populateSlider(featuredCarousel, featuredMovies, true);
+            if (movieSlider1) populateSlider(movieSlider1, popularMovies);
+            if (movieSlider2) populateSlider(movieSlider2, newReleases);
+
+            // Setup navigation for carousels/sliders
+            if (featuredCarousel) setupSliderNavigation('featuredPrev', 'featuredNext', featuredCarousel);
+            if (movieSlider1) setupSliderNavigation('slider1Prev', 'slider1Next', movieSlider1);
+            if (movieSlider2) setupSliderNavigation('slider2Prev', 'slider2Next', movieSlider2);
+        });
+
+    </script>
+</body>
+</html>
