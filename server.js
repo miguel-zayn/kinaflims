@@ -54,6 +54,11 @@ app.get('/api/movies', (req, res) => {
         res.json(rows);
     });
 });
+const path = require('path');
+
+// Serve static files from 'admin' folder
+app.use(express.static(path.join(__dirname, 'admin')));
+
 // ...existing code...
 const PORT = process.env.PORT || 3001; // ✅ use Render’s port
 app.listen(PORT, () => {
